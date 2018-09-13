@@ -170,6 +170,11 @@ var UIController = (function () {
       fieldsArray[0].focus();
     },
 
+    deleteListItem: function(selectorID) {
+      var el = document.getElementById(selectorID);
+      el.parentNode.removeChild(el);
+    }, 
+
     displayBudget: function(obj) {
       document.querySelector(DOMStrings.budgetLabel).textContent = obj.budget;
       document.querySelector(DOMStrings.incomeLabel).textContent = obj.totalInc;
@@ -254,8 +259,10 @@ var controller = (function (budgetCtrl, UICtrl) {
       budgetCtrl.deleteItem(type, ID);
 
       // 2. Delete the item from the UI
+      UICtrl.deleteListItem(itemID);
 
       // 3. Update and show the new budget
+      updateBudget();
 
     }
   };
