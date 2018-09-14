@@ -1,7 +1,7 @@
 // Moduel Pattern
 // Model
 var budgetController = (function () {
-  
+
   var data = {
     allItems: {
       exp: [],
@@ -14,12 +14,25 @@ var budgetController = (function () {
     budget: 0,
     percentage: -1
   };
-
+  
   var Expense = function(id, description, value) {
     this.id = id;
     this.description = description;
     this.value = value;
+    this.percentage = -1;
   };
+
+  Expense.prototype.calcPercentage = function(totalIncome) {
+    if (totalIncome > 0) {
+      this.percentage = Math.round((this.value / totalIncome) * 100);
+    } else {
+      this.percentage = -1;
+    }
+  };
+
+  Expense.prototype.getPercentage = function() {
+    return this.percentage;
+  }
 
   var Income = function(id, description, value) {
     this.id = id;
@@ -38,7 +51,7 @@ var budgetController = (function () {
 
   return {
     addItem: function(type, des, val) {
-      var newItem;
+      var newItem, ID;
 
       // Create new ID
       if (data.allItems[type].length > 0) {
@@ -76,7 +89,19 @@ var budgetController = (function () {
         data.percentage = -1;
       }
 
-      // Calculate the percentage of income that we spent
+    }, 
+    
+    calculatePercentages: function() {
+      data.allItems.exp.forEach(function(cur) {
+        cur.calcPercentage(data.totals.inc);
+      });
+    },
+
+    getPercentages: function() {
+      var allPerc = data.allItems.exp.map(function(cur) {
+        return cur.getPercentage();
+      });
+      return allPerc;
     }, 
 
     getBudget: function() {
@@ -89,7 +114,6 @@ var budgetController = (function () {
     },
 
     deleteItem: function(type, id) {
-      
       var ids, index;
       ids = data.allItems[type].map((current) => {
         return current.id;
@@ -98,11 +122,9 @@ var budgetController = (function () {
       index = ids.indexOf(id);
       console.log(typeof id);
       
-      
       if (index !== -1) {
         data.allItems[type].splice(index, 1);
       }
-      
     },
 
     testing: function() {
@@ -121,11 +143,12 @@ var UIController = (function () {
     inputBtn:         '.add__btn',
     incomeContainer:  '.income__list',
     expensesContainer:'.expenses__list',
-    budgetLabel: '.budget__value',
-    incomeLabel: '.budget__income--value',
-    expenseLabel: '.budget__expenses--value',
-    percentageLabel: '.budget__expenses--percentage',
-    container:  '.container'
+    budgetLabel:      '.budget__value',
+    incomeLabel:      '.budget__income--value',
+    expenseLabel:     '.budget__expenses--value',
+    percentageLabel:  '.budget__expenses--percentage',
+    container:        '.container',
+    expensesPercLabel:'.item__percentage'
   };
 
   return {
@@ -155,7 +178,6 @@ var UIController = (function () {
       
       // Insert HTML into the DOM
       document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
-
     }, 
 
     clearFields: function() {
@@ -164,7 +186,7 @@ var UIController = (function () {
       fields = document.querySelectorAll(DOMStrings.inputDescription + ', ' + DOMStrings.inputValue);
       // Tricks slice() into thinking we're giving it an array
       fieldsArray = Array.prototype.slice.call(fields);
-      fieldsArray.forEach( (current, index, array) => {
+      fieldsArray.forEach( (current, index, array) => { // eslint-disable-line no-unused-vars
         current.value = '';
       });
       fieldsArray[0].focus();
@@ -185,7 +207,35 @@ var UIController = (function () {
         document.querySelector(DOMStrings.percentageLabel).textContent = '---';
       }
     },
+
+    displayPercentages: function(percentages) {
+      var fields = document.querySelectorAll(DOMStrings.expensesPercLabel);
+
+      // Not using hack to convert to array
+      var nodeListForEach = function(list, callback) {
+        for (var i = 0; i < list.length; i++) {
+          callback(list[i], i);
+        }
+      };
+
+      nodeListForEach(fields, function(current, index) {
+        if (percentages[index] > 0) {
+          current.textContent = percentages[index] + '%';
+        } else {
+          current.textContent = '---';
+        }
+      });
+    },
     
+    formatNumber: function(num, type) {
+      // + or - before decimal
+      // exactly 2 decimal points
+      // comma seperating 1000s
+      num = Math.abs(num);
+      num = num.toFixded(2);
+
+    }, 
+
     getDOMstrings: function() {
       return DOMStrings;
     }
@@ -211,6 +261,18 @@ var controller = (function (budgetCtrl, UICtrl) {
     document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
   };
 
+  var updatePercentages = function(){
+    // 1. Calculate percentages
+    budgetCtrl.calculatePercentages();
+
+    // 2. Read percentages from the budget controller
+    var percentages = budgetCtrl.getPercentages();
+
+    // 3. Update the UI with the new percentages
+    UICtrl.displayPercentages(percentages);
+    
+  }
+
   var updateBudget = function() {
     // 1. Calculate the budget 
     budgetCtrl.calculateBudget();
@@ -220,7 +282,9 @@ var controller = (function (budgetCtrl, UICtrl) {
 
     // 3. Display the budget on UI
     UICtrl.displayBudget(budget);
-  }
+  };
+
+  
 
   var ctrlAddItem = function() {
     var input, newItem;
@@ -240,6 +304,9 @@ var controller = (function (budgetCtrl, UICtrl) {
   
       // 5. Calculate and update budget
       updateBudget();
+
+      // 6. Calculate and updated item percentages
+      updatePercentages();
     }
 
   };
@@ -263,6 +330,9 @@ var controller = (function (budgetCtrl, UICtrl) {
 
       // 3. Update and show the new budget
       updateBudget();
+
+      // 4. Calculate and updated item percentages
+      updatePercentages();
 
     }
   };

@@ -1,2 +1,2 @@
 # Budgety
-Making a budget app in ES15
+Making a budget app in ES5
